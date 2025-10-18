@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>电子拼图游戏</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -143,7 +143,7 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-indigo-900/80 via-purple-800/80 to-pink-800/80 text-light min-h-screen flex flex-col items-center justify-start pt-8 pb-12 px-4 animated-gradient glow-effect overflow-x-hidden overflow-y-auto">
+<body class="bg-gradient-to-br from-indigo-900/80 via-purple-800/80 to-pink-800/80 text-light min-h-screen flex flex-col items-center justify-start pt-8 pb-12 px-4 animated-gradient glow-effect">
     <!-- 梦幻粒子背景 -->
     <div id="particles-container" class="fixed inset-0 pointer-events-none"></div>
     <!-- 游戏标题 -->
@@ -239,7 +239,7 @@
                 <h2 class="text-xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300 flex items-center">
                     <i class="fa fa-puzzle-piece mr-2 text-purple-300"></i>梦幻拼图区域
                 </h2>
-                <div id="puzzle-board" class="bg-dark rounded-xl min-h-[450px] puzzle-board-grid flex items-center justify-center overflow-x-auto overflow-y-auto relative shadow-inner border border-gray-700/50 dreamy-border min-w-full">
+                <div id="puzzle-board" class="bg-dark rounded-xl min-h-[450px] puzzle-board-grid flex items-center justify-center overflow-hidden relative shadow-inner border border-gray-700/50 dreamy-border">
                     <!-- 初始提示 -->
                     <div id="initial-message" class="text-center p-10">
                         <i class="fa fa-image text-7xl text-gray-600 mb-6 float-animation"></i>
@@ -429,53 +429,79 @@
             pieceHeight = boardHeight / rows;
         }
         
-        // 创建拼图块
+        // 创建拼图块 - 优化版
         function createPuzzlePieces() {
-            // 清空之前的拼图块
-            puzzlePieces = [];
-            piecesContainer.innerHTML = '';
-            puzzleBoard.innerHTML = '';
-            
-            // 设置拼图板样式
-            puzzleBoard.style.width = `${boardWidth}px`;
-            puzzleBoard.style.height = `${boardHeight}px`;
-            
-            // 创建拼图块
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    const piece = document.createElement('div');
-                    const pieceIndex = row * cols + col;
-                    
-                    // 计算拼图块的位置和样式
-                    const leftPos = col * pieceWidth;
-                    const topPos = row * pieceHeight;
-                    
-                    // 创建拼图块元素 - 移除过渡效果以提高拖拽流畅度
-                    piece.className = 'puzzle-piece absolute cursor-move puzzle-shadow rounded-md';
-                    piece.style.transition = 'none'; // 拖拽时无过渡效果
-                    piece.style.width = `${pieceWidth}px`;
-                    piece.style.height = `${pieceHeight}px`;
-                    piece.style.backgroundImage = `url(${puzzleImage.src})`;
-                    piece.style.backgroundPosition = `-${leftPos}px -${topPos}px`;
-                    piece.style.backgroundSize = `${boardWidth}px ${boardHeight}px`;
-                    piece.style.backgroundRepeat = 'no-repeat';
-                    piece.dataset.row = row;
-                    piece.dataset.col = col;
-                    piece.dataset.index = pieceIndex;
-                    piece.dataset.correctX = leftPos;
-                    piece.dataset.correctY = topPos;
-                    piece.dataset.placed = 'false';
-                    
-                    // 添加拖拽功能
-                    makePieceDraggable(piece);
-                    
-                    // 添加到拼图块数组
-                    puzzlePieces.push(piece);
+            try {
+                // 使用DocumentFragment减少重绘次数
+                const fragment = document.createDocumentFragment();
+                
+                // 清空之前的拼图块
+                puzzlePieces = [];
+                piecesContainer.innerHTML = '';
+                puzzleBoard.innerHTML = '';
+                
+                // 设置拼图板样式
+                puzzleBoard.style.width = `${boardWidth}px`;
+                puzzleBoard.style.height = `${boardHeight}px`;
+                
+                // 预计算所有样式值
+                const imageUrl = puzzleImage ? puzzleImage.src : '';
+                if (!imageUrl) {
+                    console.error('No puzzle image available');
+                    return;
                 }
+                
+                // 创建拼图块
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        const piece = document.createElement('div');
+                        const pieceIndex = row * cols + col;
+                        
+                        // 计算拼图块的位置和样式
+                        const leftPos = col * pieceWidth;
+                        const topPos = row * pieceHeight;
+                        
+                        // 优化：使用类名和对象方式设置样式，减少样式设置次数
+                        piece.className = 'puzzle-piece absolute cursor-move puzzle-shadow rounded-md';
+                        Object.assign(piece.style, {
+                            transition: 'none', // 拖拽时无过渡效果
+                            width: `${pieceWidth}px`,
+                            height: `${pieceHeight}px`,
+                            backgroundImage: `url(${imageUrl})`,
+                            backgroundPosition: `-${leftPos}px -${topPos}px`,
+                            backgroundSize: `${boardWidth}px ${boardHeight}px`,
+                            backgroundRepeat: 'no-repeat',
+                            touchAction: 'none' // 防止触摸设备上的默认行为
+                        });
+                        
+                        // 设置数据属性
+                        piece.dataset.row = row;
+                        piece.dataset.col = col;
+                        piece.dataset.index = pieceIndex;
+                        piece.dataset.correctX = leftPos;
+                        piece.dataset.correctY = topPos;
+                        piece.dataset.placed = 'false';
+                        
+                        // 添加拖拽功能
+                        makePieceDraggable(piece);
+                        
+                        // 添加到临时容器和数组
+                        fragment.appendChild(piece);
+                        puzzlePieces.push(piece);
+                    }
+                }
+                
+                // 一次性添加所有拼图块到DOM
+                piecesContainer.appendChild(fragment);
+                
+                // 随机打乱拼图块的位置
+                shufflePieces();
+            } catch (err) {
+                console.error('Error creating puzzle pieces:', err);
+                // 显示错误消息给用户
+                alert('创建拼图块时出错，请重试。');
+                resetGame();
             }
-            
-            // 随机打乱拼图块的位置
-            shufflePieces();
         }
         
         // 随机打乱拼图块
@@ -503,36 +529,72 @@
             });
         }
         
-        // 使拼图块可拖拽 - 优化版
+        // 使拼图块可拖拽 - 最终优化版（支持触摸和鼠标）
         function makePieceDraggable(piece) {
             let isDragging = false;
             let offsetX, offsetY;
             let startZIndex;
             let dragTarget = null;
             let animationFrameId = null;
+            let lastDragTime = 0;
             
             // 鼠标按下事件
-            piece.addEventListener('mousedown', function(e) {
+            piece.addEventListener('mousedown', handleDragStart);
+            
+            // 触摸开始事件（支持移动设备）
+            piece.addEventListener('touchstart', handleDragStart, { passive: false });
+            
+            // 统一的拖拽开始处理函数
+            function handleDragStart(e) {
                 if (!isGameActive) return;
+                
+                // 防止在触摸设备上的默认行为
+                if (e.type === 'touchstart') {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    e.clientX = touch.clientX;
+                    e.clientY = touch.clientY;
+                }
                 
                 dragTarget = piece;
                 isDragging = true;
-                startZIndex = piece.style.zIndex;
+                startZIndex = piece.style.zIndex || '1';
                 piece.style.zIndex = 1000; // 拖动时提高层级
                 piece.classList.add('piece-selected');
                 
-                // 计算鼠标相对于拼图块的偏移量
+                // 计算鼠标/触摸相对于拼图块的偏移量
                 const rect = piece.getBoundingClientRect();
                 offsetX = e.clientX - rect.left;
                 offsetY = e.clientY - rect.top;
                 
-                // 防止拖动时选中文本
-                e.preventDefault();
-            });
+                // 记录开始时间用于防抖
+                lastDragTime = Date.now();
+            }
             
             // 优化的鼠标移动事件处理
-            document.addEventListener('mousemove', function(e) {
+            document.addEventListener('mousemove', handleDragMove);
+            
+            // 触摸移动事件（支持移动设备）
+            document.addEventListener('touchmove', handleDragMove, { passive: false });
+            
+            // 统一的拖拽移动处理函数
+            function handleDragMove(e) {
                 if (!isDragging || dragTarget !== piece) return;
+                
+                // 防止在触摸设备上的默认行为
+                if (e.type === 'touchmove') {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    e.clientX = touch.clientX;
+                    e.clientY = touch.clientY;
+                }
+                
+                // 防抖动处理，限制更新频率
+                const currentTime = Date.now();
+                if (currentTime - lastDragTime < 8) { // 约120fps
+                    return;
+                }
+                lastDragTime = currentTime;
                 
                 // 使用requestAnimationFrame优化拖动性能
                 if (animationFrameId) {
@@ -540,33 +602,45 @@
                 }
                 
                 animationFrameId = requestAnimationFrame(() => {
-                    // 计算拼图块的新位置（简化版本）
-                    let newX, newY;
-                    
-                    // 获取当前容器的边界
-                    const parent = piece.parentElement;
-                    const parentRect = parent === piecesContainer ? 
-                        piecesContainer.getBoundingClientRect() : 
-                        puzzleBoard.getBoundingClientRect();
-                    
-                    // 统一的坐标计算方式
-                    newX = e.clientX - parentRect.left - offsetX;
-                    newY = e.clientY - parentRect.top - offsetY;
-                    
-                    // 简化的边界限制
-                    const maxX = parent.clientWidth - pieceWidth;
-                    const maxY = parent.clientHeight - pieceHeight;
-                    newX = Math.max(-pieceWidth / 4, Math.min(newX, maxX + pieceWidth / 4));
-                    newY = Math.max(-pieceHeight / 4, Math.min(newY, maxY + pieceHeight / 4));
-                    
-                    // 直接设置位置，不使用过渡
-                    piece.style.left = `${newX}px`;
-                    piece.style.top = `${newY}px`;
+                    try {
+                        // 获取当前容器的边界
+                        const parent = piece.parentElement;
+                        if (!parent) return;
+                        
+                        const parentRect = parent.getBoundingClientRect();
+                        
+                        // 统一的坐标计算方式
+                        let newX = e.clientX - parentRect.left - offsetX;
+                        let newY = e.clientY - parentRect.top - offsetY;
+                        
+                        // 改进的边界限制算法
+                        const maxX = Math.max(0, parent.clientWidth - pieceWidth);
+                        const maxY = Math.max(0, parent.clientHeight - pieceHeight);
+                        
+                        // 允许部分超出边界，但有合理限制
+                        const boundaryTolerance = Math.min(100, pieceWidth / 2);
+                        newX = Math.max(-boundaryTolerance, Math.min(newX, maxX + boundaryTolerance));
+                        newY = Math.max(-boundaryTolerance, Math.min(newY, maxY + boundaryTolerance));
+                        
+                        // 使用CSS transform代替直接设置位置，提升性能
+                        piece.style.transform = `translate(${newX}px, ${newY}px)`;
+                    } catch (err) {
+                        console.error('Error during drag move:', err);
+                    }
                 });
-            });
+            }
             
             // 鼠标释放事件
-            document.addEventListener('mouseup', function(e) {
+            document.addEventListener('mouseup', handleDragEnd);
+            
+            // 触摸结束事件（支持移动设备）
+            document.addEventListener('touchend', handleDragEnd, { passive: false });
+            
+            // 触摸取消事件（支持移动设备）
+            document.addEventListener('touchcancel', handleDragEnd, { passive: false });
+            
+            // 统一的拖拽结束处理函数
+            function handleDragEnd(e) {
                 if (!isDragging || dragTarget !== piece) return;
                 
                 // 取消未执行的动画帧
@@ -579,42 +653,76 @@
                 piece.classList.remove('piece-selected');
                 piece.style.zIndex = startZIndex;
                 
-                // 检查是否应该将拼图块移动到拼图板
-                const boardRect = puzzleBoard.getBoundingClientRect();
-                
-                // 如果鼠标释放位置在拼图板内
-                if (e.clientX >= boardRect.left && e.clientX <= boardRect.right && 
-                    e.clientY >= boardRect.top && e.clientY <= boardRect.bottom) {
-                    
-                    // 计算拼图块在拼图板中的位置
-                    const boardX = e.clientX - boardRect.left - offsetX;
-                    const boardY = e.clientY - boardRect.top - offsetY;
-                    
-                    // 将拼图块移动到拼图板
-                    piece.style.left = `${boardX}px`;
-                    piece.style.top = `${boardY}px`;
-                    
-                    // 优化：检查当前父容器，避免不必要的DOM操作
-                    if (piece.parentElement !== puzzleBoard) {
-                        // 如果拼图块已经在另一个容器中，先移除
-                        if (piece.parentElement) {
-                            piece.parentElement.removeChild(piece);
-                        }
-                        // 添加到拼图板
-                        puzzleBoard.appendChild(piece);
+                // 获取触摸或鼠标位置
+                let clientX, clientY;
+                if (e.type === 'touchend' || e.type === 'touchcancel') {
+                    // 对于触摸结束事件，获取最后一次触摸的位置
+                    const touchList = e.changedTouches || e.touches;
+                    if (touchList && touchList.length > 0) {
+                        clientX = touchList[0].clientX;
+                        clientY = touchList[0].clientY;
+                    } else {
+                        // 如果没有触摸信息，使用元素中心位置
+                        const rect = piece.getBoundingClientRect();
+                        clientX = rect.left + rect.width / 2;
+                        clientY = rect.top + rect.height / 2;
                     }
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                
+                // 重置transform
+                piece.style.transform = '';
+                
+                // 检查是否应该将拼图块移动到拼图板
+                try {
+                    const boardRect = puzzleBoard.getBoundingClientRect();
                     
-                    // 检查拼图块是否放置正确
-                    checkPiecePlacement(piece, boardX, boardY);
-                    
-                    // 增加移动次数
-                    movesCount++;
-                    movesCountElement.textContent = movesCount;
+                    // 如果鼠标/触摸释放位置在拼图板内
+                    if (clientX >= boardRect.left - pieceWidth/2 && clientX <= boardRect.right + pieceWidth/2 && 
+                        clientY >= boardRect.top - pieceHeight/2 && clientY <= boardRect.bottom + pieceHeight/2) {
+                        
+                        // 计算拼图块在拼图板中的位置
+                        const boardX = clientX - boardRect.left - offsetX;
+                        const boardY = clientY - boardRect.top - offsetY;
+                        
+                        // 将拼图块移动到拼图板
+                        piece.style.left = `${boardX}px`;
+                        piece.style.top = `${boardY}px`;
+                        
+                        // 优化：检查当前父容器，避免不必要的DOM操作
+                        if (piece.parentElement !== puzzleBoard) {
+                            // 使用DocumentFragment减少DOM操作
+                            if (piece.parentElement) {
+                                piece.parentElement.removeChild(piece);
+                            }
+                            // 添加到拼图板
+                            puzzleBoard.appendChild(piece);
+                        }
+                        
+                        // 检查拼图块是否放置正确
+                        checkPiecePlacement(piece, boardX, boardY);
+                        
+                        // 增加移动次数
+                        movesCount++;
+                        movesCountElement.textContent = movesCount;
+                    } else {
+                        // 如果不在拼图板内，确保在正确的容器中
+                        if (piece.parentElement !== piecesContainer) {
+                            if (piece.parentElement) {
+                                piece.parentElement.removeChild(piece);
+                            }
+                            piecesContainer.appendChild(piece);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error during drag end:', err);
                 }
                 
                 // 重置拖拽目标
                 dragTarget = null;
-            });
+            }
             
             // 鼠标悬停效果
             piece.addEventListener('mouseenter', function() {
@@ -917,46 +1025,82 @@
         // 当页面加载完成后初始化游戏
         window.addEventListener('load', initGame);
         
-        // 响应式调整
+        // 响应式调整 - 添加防抖功能
+        let resizeTimeout;
         window.addEventListener('resize', function() {
-            // 根据屏幕宽度调整拼图板大小
-            const containerWidth = document.querySelector('main').clientWidth - 30;
-            const maxWidth = window.innerWidth > 768 ? 600 : Math.min(window.innerWidth - 40, 500);
-            const newBoardWidth = Math.min(containerWidth, maxWidth);
-            const aspectRatio = puzzleImage ? puzzleImage.width / puzzleImage.height : 1.5;
+            // 防抖处理，避免频繁调整
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                handleResize();
+            }, 150);
+        });
+        
+        // 处理窗口大小调整的函数
+        function handleResize() {
+            if (!isGameActive || !puzzleImage) return;
             
-            if (newBoardWidth !== boardWidth && isGameActive) {
+            try {
+                // 根据屏幕宽度调整拼图板大小
+                const mainElement = document.querySelector('main');
+                if (!mainElement) return;
+                
+                const containerWidth = mainElement.clientWidth - 30;
+                const maxWidth = window.innerWidth > 768 ? 600 : Math.min(window.innerWidth - 40, 500);
+                const newBoardWidth = Math.min(containerWidth, maxWidth);
+                const aspectRatio = puzzleImage.width / puzzleImage.height;
+                
+                // 只有当宽度变化超过5%时才重新调整，避免微小变化导致的重绘
+                if (Math.abs(newBoardWidth - boardWidth) < boardWidth * 0.05) {
+                    return;
+                }
+                
                 boardWidth = newBoardWidth;
                 boardHeight = boardWidth / aspectRatio;
                 
                 // 重新计算拼图块尺寸
                 calculatePieceDimensions();
                 
-                // 更新拼图块和拼图板大小
-                puzzleBoard.style.width = `${boardWidth}px`;
-                puzzleBoard.style.height = `${boardHeight}px`;
+                // 批量更新样式
+                const boardStyleUpdate = {
+                    width: `${boardWidth}px`,
+                    height: `${boardHeight}px`
+                };
                 
-                puzzlePieces.forEach(piece => {
-                    // 更新拼图块大小
-                    piece.style.width = `${pieceWidth}px`;
-                    piece.style.height = `${pieceHeight}px`;
-                    piece.style.backgroundSize = `${boardWidth}px ${boardHeight}px`;
+                // 使用requestAnimationFrame确保在一次重绘周期内完成更新
+                requestAnimationFrame(() => {
+                    // 更新拼图板大小
+                    Object.assign(puzzleBoard.style, boardStyleUpdate);
                     
-                    // 如果拼图块已经放置正确，更新其位置
-                    if (piece.dataset.placed === 'true') {
-                        const row = parseInt(piece.dataset.row);
-                        const col = parseInt(piece.dataset.col);
-                        const correctX = col * pieceWidth;
-                        const correctY = row * pieceHeight;
+                    // 更新拼图块
+                    puzzlePieces.forEach(piece => {
+                        // 更新拼图块大小
+                        Object.assign(piece.style, {
+                            width: `${pieceWidth}px`,
+                            height: `${pieceHeight}px`,
+                            backgroundSize: `${boardWidth}px ${boardHeight}px`
+                        });
                         
-                        piece.style.left = `${correctX}px`;
-                        piece.style.top = `${correctY}px`;
-                        piece.dataset.correctX = correctX;
-                        piece.dataset.correctY = correctY;
-                    }
+                        // 如果拼图块已经放置正确，更新其位置
+                        if (piece.dataset.placed === 'true') {
+                            const row = parseInt(piece.dataset.row);
+                            const col = parseInt(piece.dataset.col);
+                            const correctX = col * pieceWidth;
+                            const correctY = row * pieceHeight;
+                            
+                            Object.assign(piece.style, {
+                                left: `${correctX}px`,
+                                top: `${correctY}px`
+                            });
+                            
+                            piece.dataset.correctX = correctX;
+                            piece.dataset.correctY = correctY;
+                        }
+                    });
                 });
+            } catch (err) {
+                console.error('Error during resize:', err);
             }
-        });
+        }
     </script>
 </body>
 </html>

@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电子拼图游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#C084FC', // 梦幻紫色
+                        secondary: '#F472B6', // 柔和粉色
+                        accent: '#60A5FA', // 天空蓝
+                        dark: '#1F1F33', // 深色背景
+                        light: '#FDF4FF'  // 浅色文本
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            /* 梦幻风格样式 */
+            .dreamy-shadow {
+                box-shadow: 0 8px 32px rgba(200, 130, 255, 0.2), 0 4px 12px rgba(244, 114, 182, 0.1);
+            }
+            .glow {
+                box-shadow: 0 0 20px rgba(192, 132, 252, 0.4);
+            }
+            .dreamy-border {
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .puzzle-piece-hover {
+                filter: brightness(1.1) contrast(1.05) saturate(1.1);
+                transform: translateY(-4px);
+                box-shadow: 0 15px 30px rgba(192, 132, 252, 0.25), 0 0 15px rgba(244, 114, 182, 0.2);
+            }
+            .piece-selected {
+                border: 2px solid #C084FC;
+                transform: scale(1.03);
+                box-shadow: 0 0 20px rgba(192, 132, 252, 0.5);
+            }
+            .puzzle-board-grid {
+                background-size: 30px 30px;
+                background-image: 
+                    linear-gradient(to right, rgba(192, 132, 252, 0.1) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(192, 132, 252, 0.1) 1px, transparent 1px);
+            }
+            .glass-effect {
+                background: rgba(31, 31, 51, 0.65);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+            }
+            .dreamy-glass-effect {
+                background: rgba(192, 132, 252, 0.1);
+                backdrop-filter: blur(15px);
+                -webkit-backdrop-filter: blur(15px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .btn-hover-effect {
+                transition: all 0.3s ease;
+            }
+            .btn-hover-effect:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 12px 30px -8px rgba(192, 132, 252, 0.4), 0 0 15px rgba(244, 114, 182, 0.3);
+            }
+            .animated-gradient {
+                background-size: 300% 300%;
+                animation: gradientMove 4s ease infinite;
+            }
+            @keyframes gradientMove {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+            .float-animation {
+                animation: float 4s ease-in-out infinite;
+            }
+            @keyframes float {
+                0% { transform: translateY(0px); }
+                50% { transform: translateY(-15px); }
+                100% { transform: translateY(0px); }
+            }
+            .scale-in {
+                animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            }
+            @keyframes scaleIn {
+                0% { transform: scale(0.9); opacity: 0; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            .pulse {
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+            /* 梦幻粒子效果 */
+            .particle {
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.8);
+                pointer-events: none;
+                animation: floatParticle 8s infinite ease-in-out;
+                opacity: 0.6;
+                box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            }
+            @keyframes floatParticle {
+                0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                25% { transform: translate(20px, -20px) rotate(90deg); }
+                50% { transform: translate(0, -40px) rotate(180deg); }
+                75% { transform: translate(-20px, -20px) rotate(270deg); }
+            }
+            /* 梦幻光晕效果 */
+            .glow-effect {
+                position: relative;
+                overflow: hidden;
+            }
+            .glow-effect::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(192, 132, 252, 0.15) 0%, transparent 70%);
+                animation: rotateGlow 20s linear infinite;
+            }
+            @keyframes rotateGlow {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-900/80 via-purple-800/80 to-pink-800/80 text-light min-h-screen flex flex-col items-center justify-start pt-8 pb-12 px-4 animated-gradient glow-effect">
+    <!-- 梦幻粒子背景 -->
+    <div id="particles-container" class="fixed inset-0 pointer-events-none"></div>
+    <!-- 游戏标题 -->
+    <header class="w-full max-w-4xl mb-8 text-center scale-in relative">
+        <h1 class="text-[clamp(2rem,6vw,3.5rem)] font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-pink-300 to-rose-300 mb-3 tracking-tight drop-shadow-lg">
+            梦幻拼图游戏
+        </h1>
+        <p class="text-gray-100 text-lg max-w-2xl mx-auto backdrop-blur-sm px-4 py-2 rounded-lg bg-white/5 dreamy-glass-effect">
+            选择一张图片，将拼图块拖拽到正确的位置，完成整幅梦幻拼图！
+        </p>
+        <!-- 梦幻装饰光环 -->
+        <div class="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-10 -left-20 w-64 h-64 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-full blur-3xl"></div>
+    </header>
+
+    <!-- 主游戏容器 -->
+    <main class="w-full max-w-6xl flex flex-col lg:flex-row gap-6 lg:gap-8 items-start lg:items-stretch">
+        <!-- 左侧控制面板 -->
+        <div class="w-full lg:w-80 shrink-0 glass-effect rounded-2xl p-6 dreamy-shadow transition-all duration-500 hover:dreamy-shadow hover:border-purple-500/70 dreamy-border">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300 flex items-center">
+                    <i class="fa fa-sliders mr-2 text-purple-300"></i>游戏设置
+                </h2>
+                
+                <!-- 图片选择 -->
+                <div class="mb-5">
+                    <label for="image-selector" class="block text-gray-200 mb-2 font-medium">选择拼图图片</label>
+                    <input type="file" id="image-selector" accept="image/*" class="w-full text-sm text-gray-300
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-medium
+                        file:bg-gradient-to-r from-primary/90 to-secondary/90 file:text-white
+                        hover:file:from-primary hover:file:to-secondary cursor-pointer transition-all btn-hover-effect" />
+                    <div class="mt-2 text-xs text-gray-400 italic">
+                        或者点击下方预设图片
+                    </div>
+                </div>
+
+                <!-- 预设图片 -->
+                <div class="mb-5">
+                    <label class="block text-gray-200 mb-2 font-medium">梦幻拼图</label>
+                    <div class="grid grid-cols-3 gap-3" id="preset-images">
+                        <!-- 预设图片将通过JS动态加载 -->
+                    </div>
+                </div>
+
+                <!-- 难度已预设为专家级 -->
+
+                <!-- 开始游戏按钮 -->
+                <button id="start-game-btn" class="w-full py-3 mt-4 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed btn-hover-effect glow">
+                    <i class="fa fa-magic mr-2"></i>开始游戏
+                </button>
+            </div>
+
+            <!-- 游戏信息 -->
+            <div class="border-t border-gray-700 pt-5">
+                <h2 class="text-xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300 flex items-center">
+                    <i class="fa fa-star mr-2 text-purple-300"></i>游戏信息
+                </h2>
+                <div class="space-y-4 text-gray-200">
+                    <div class="flex justify-between items-center dreamy-glass-effect p-3 rounded-xl">
+                        <span><i class="fa fa-star mr-2 text-yellow-300"></i>已完成拼图块：</span>
+                        <span id="completed-count" class="font-mono text-lg text-yellow-300">0</span>
+                    </div>
+                    <div class="flex justify-between items-center dreamy-glass-effect p-3 rounded-xl">
+                        <span><i class="fa fa-clock-o mr-2 text-blue-300"></i>游戏时间：</span>
+                        <span id="game-time" class="font-mono text-lg text-blue-300">00:00</span>
+                    </div>
+                    <div class="flex justify-between items-center dreamy-glass-effect p-3 rounded-xl">
+                        <span><i class="fa fa-magic mr-2 text-purple-300"></i>移动次数：</span>
+                        <span id="moves-count" class="font-mono text-lg text-purple-300">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 游戏控制按钮 -->
+            <div class="border-t border-gray-700 pt-5 mt-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <button id="reset-game-btn" class="py-3 bg-gradient-to-r from-red-500/90 to-rose-500/90 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed btn-hover-effect">
+                        <i class="fa fa-refresh mr-2"></i>重置游戏
+                    </button>
+                    <button id="hint-btn" class="py-3 bg-gradient-to-r from-amber-400/90 to-orange-400/90 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed btn-hover-effect">
+                        <i class="fa fa-lightbulb-o mr-2"></i>提示
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧游戏区域 -->
+        <div class="w-full flex flex-col gap-6">
+            <!-- 拼图板 -->
+            <div class="glass-effect rounded-2xl p-6 dreamy-shadow transition-all duration-500 hover:dreamy-shadow hover:border-purple-500/70 dreamy-border">
+                <h2 class="text-xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300 flex items-center">
+                    <i class="fa fa-puzzle-piece mr-2 text-purple-300"></i>梦幻拼图区域
+                </h2>
+                <div id="puzzle-board" class="bg-dark rounded-xl min-h-[450px] puzzle-board-grid flex items-center justify-center overflow-hidden relative shadow-inner border border-gray-700/50 dreamy-border">
+                    <!-- 初始提示 -->
+                    <div id="initial-message" class="text-center p-10">
+                        <i class="fa fa-image text-7xl text-gray-600 mb-6 float-animation"></i>
+                        <p class="text-gray-300 text-lg">请选择一张图片并点击开始游戏</p>
+                    </div>
+                    <!-- 拼图块将在这里动态生成 -->
+                </div>
+            </div>
+
+            <!-- 拼图块容器 -->
+            <div class="glass-effect rounded-2xl p-6 dreamy-shadow transition-all duration-500 hover:dreamy-shadow hover:border-purple-500/70 dreamy-border">
+                <h2 class="text-xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300 flex items-center">
+                    <i class="fa fa-th mr-2 text-purple-300"></i>拼图块
+                </h2>
+                <div id="pieces-container" class="min-h-[200px] bg-dark rounded-xl p-5 flex flex-wrap gap-4 items-start justify-start overflow-auto shadow-inner border border-gray-700/50 dreamy-border">
+                    <!-- 拼图块将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 游戏完成模态框 -->
+    <div id="completion-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-500">
+        <div class="glass-effect border border-purple-400/80 rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all scale-95 opacity-0 dreamy-shadow glow" id="modal-content">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-green-400 to-emerald-600 text-white mb-5 float-animation">
+                    <i class="fa fa-trophy text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-400 mb-3">恭喜完成梦幻拼图！</h2>
+                <p class="text-gray-300">太棒了，你成功地完成了这幅拼图</p>
+            </div>
+            
+            <div class="space-y-3 text-gray-300 mb-6">
+                <div class="flex justify-between py-2 border-b border-gray-700">
+                    <span>用时：</span>
+                    <span id="final-time" class="font-mono"></span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-gray-700">
+                    <span>移动次数：</span>
+                    <span id="final-moves" class="font-mono"></span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span>难度：</span>
+                    <span id="final-difficulty" class="font-mono"></span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-5">
+                <button id="play-again-btn" class="py-3 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 btn-hover-effect glow">
+                        <i class="fa fa-refresh mr-2"></i>再玩一次
+                    </button>
+                    <button id="close-modal-btn" class="py-3 bg-gray-700 text-white font-semibold rounded-full hover:bg-gray-600 transition-all duration-300 btn-hover-effect">
+                        <i class="fa fa-times mr-2"></i>关闭
+                    </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let puzzleImage = null;
+        let rows = 6;
+        let cols = 6;
+        let puzzlePieces = [];
+        let boardWidth = window.innerWidth > 768 ? 600 : Math.min(window.innerWidth - 40, 500);
+        let boardHeight = boardWidth * 0.75;
+        let pieceWidth, pieceHeight;
+        let isGameActive = false;
+        let gameStartTime = 0;
+        let gameTimer = null;
+        let movesCount = 0;
+        let completedPieces = 0;
+        let gameDifficulty = '专家级';
+        
+        // DOM元素
+        const imageSelector = document.getElementById('image-selector');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const resetGameBtn = document.getElementById('reset-game-btn');
+        const hintBtn = document.getElementById('hint-btn');
+        const puzzleBoard = document.getElementById('puzzle-board');
+        const piecesContainer = document.getElementById('pieces-container');
+        const initialMessage = document.getElementById('initial-message');
+        const completedCountElement = document.getElementById('completed-count');
+        const gameTimeElement = document.getElementById('game-time');
+        const movesCountElement = document.getElementById('moves-count');
+        const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+        const presetImages = document.getElementById('preset-images');
+        const completionModal = document.getElementById('completion-modal');
+        const finalTimeElement = document.getElementById('final-time');
+        const finalMovesElement = document.getElementById('final-moves');
+        const finalDifficultyElement = document.getElementById('final-difficulty');
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        
+        // 预设图片数据
+        const defaultImages = [
+            {
+                name: '拼图 1',
+                url: 'images/Puzzle1.jpg'
+            },
+            {
+                name: '拼图 2',
+                url: 'images/Puzzle2.jpg'
+            },
+            {
+                name: '拼图 3',
+                url: 'images/Puzzle3.jpg'
+            }
+        ];
+        
+        // 初始化预设图片
+        function initPresetImages() {
+            defaultImages.forEach((img, index) => {
+                const imgElement = document.createElement('div');
+                imgElement.className = 'preset-image relative rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-all group';
+                imgElement.innerHTML = `
+                    <img src="${img.url}" alt="${img.name}" class="w-full aspect-square object-cover" />
+                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span class="text-white text-xs">${img.name}</span>
+                    </div>
+                `;
+                imgElement.addEventListener('click', () => {
+                    loadPresetImage(img.url);
+                });
+                presetImages.appendChild(imgElement);
+            });
+        }
+        
+        // 加载预设图片
+        function loadPresetImage(url) {
+            const img = new Image();
+            img.onload = function() {
+                puzzleImage = this;
+                initialMessage.innerHTML = `
+                    <i class="fa fa-image text-6xl text-gray-600 mb-4"></i>
+                    <p class="text-gray-400">已选择图片，点击开始游戏</p>
+                `;
+                startGameBtn.disabled = false;
+            };
+            img.onerror = function() {
+                alert('无法加载图片，请尝试其他图片。');
+            };
+            img.src = url;
+        }
+        
+        // 设置难度
+        function setupDifficultyButtons() {
+            // 只保留专家级难度按钮，移除点击事件以防止意外更改
+            difficultyBtns.forEach(btn => {
+                // 确保专家级按钮保持激活状态
+                btn.classList.add('active', 'bg-primary/80');
+                btn.classList.remove('bg-gray-700');
+                
+                // 禁用按钮点击，防止更改难度
+                btn.disabled = true;
+                btn.style.cursor = 'default';
+            });
+        }
+        
+        // 处理文件选择
+        function handleFileSelection() {
+            imageSelector.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            puzzleImage = this;
+                            initialMessage.innerHTML = `
+                                <i class="fa fa-image text-6xl text-gray-600 mb-4"></i>
+                                <p class="text-gray-400">已选择图片，点击开始游戏</p>
+                            `;
+                            startGameBtn.disabled = false;
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        
+        // 计算拼图块的大小和位置
+        function calculatePieceDimensions() {
+            // 根据拼图板的大小和行列数计算每个拼图块的大小
+            pieceWidth = boardWidth / cols;
+            pieceHeight = boardHeight / rows;
+        }
+        
+        // 创建拼图块
+        function createPuzzlePieces() {
+            // 清空之前的拼图块
+            puzzlePieces = [];
+            piecesContainer.innerHTML = '';
+            puzzleBoard.innerHTML = '';
+            
+            // 设置拼图板样式
+            puzzleBoard.style.width = `${boardWidth}px`;
+            puzzleBoard.style.height = `${boardHeight}px`;
+            
+            // 创建拼图块
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const piece = document.createElement('div');
+                    const pieceIndex = row * cols + col;
+                    
+                    // 计算拼图块的位置和样式
+                    const leftPos = col * pieceWidth;
+                    const topPos = row * pieceHeight;
+                    
+                    // 创建拼图块元素 - 移除过渡效果以提高拖拽流畅度
+                    piece.className = 'puzzle-piece absolute cursor-move puzzle-shadow rounded-md';
+                    piece.style.transition = 'none'; // 拖拽时无过渡效果
+                    piece.style.width = `${pieceWidth}px`;
+                    piece.style.height = `${pieceHeight}px`;
+                    piece.style.backgroundImage = `url(${puzzleImage.src})`;
+                    piece.style.backgroundPosition = `-${leftPos}px -${topPos}px`;
+                    piece.style.backgroundSize = `${boardWidth}px ${boardHeight}px`;
+                    piece.style.backgroundRepeat = 'no-repeat';
+                    piece.dataset.row = row;
+                    piece.dataset.col = col;
+                    piece.dataset.index = pieceIndex;
+                    piece.dataset.correctX = leftPos;
+                    piece.dataset.correctY = topPos;
+                    piece.dataset.placed = 'false';
+                    
+                    // 添加拖拽功能
+                    makePieceDraggable(piece);
+                    
+                    // 添加到拼图块数组
+                    puzzlePieces.push(piece);
+                }
+            }
+            
+            // 随机打乱拼图块的位置
+            shufflePieces();
+        }
+        
+        // 随机打乱拼图块
+        function shufflePieces() {
+            // 随机排序拼图块
+            puzzlePieces.sort(() => Math.random() - 0.5);
+            
+            // 将拼图块放置在右侧容器中，随机分布
+            puzzlePieces.forEach((piece, index) => {
+                // 计算初始位置（在右侧容器中）
+                const containerRect = piecesContainer.getBoundingClientRect();
+                const boardRect = puzzleBoard.getBoundingClientRect();
+                
+                // 设置初始位置在拼图块容器中
+                const containerX = Math.random() * (containerRect.width - pieceWidth);
+                const containerY = Math.random() * (containerRect.height - pieceHeight);
+                
+                // 设置拼图块的位置和z-index
+                piece.style.left = `${containerX}px`;
+                piece.style.top = `${containerY}px`;
+                piece.style.zIndex = index + 1;
+                
+                // 添加到拼图块容器
+                piecesContainer.appendChild(piece);
+            });
+        }
+        
+        // 使拼图块可拖拽 - 优化版
+        function makePieceDraggable(piece) {
+            let isDragging = false;
+            let offsetX, offsetY;
+            let startZIndex;
+            let dragTarget = null;
+            let animationFrameId = null;
+            
+            // 鼠标按下事件
+            piece.addEventListener('mousedown', function(e) {
+                if (!isGameActive) return;
+                
+                dragTarget = piece;
+                isDragging = true;
+                startZIndex = piece.style.zIndex;
+                piece.style.zIndex = 1000; // 拖动时提高层级
+                piece.classList.add('piece-selected');
+                
+                // 计算鼠标相对于拼图块的偏移量
+                const rect = piece.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                
+                // 防止拖动时选中文本
+                e.preventDefault();
+            });
+            
+            // 优化的鼠标移动事件处理
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging || dragTarget !== piece) return;
+                
+                // 使用requestAnimationFrame优化拖动性能
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                
+                animationFrameId = requestAnimationFrame(() => {
+                    // 计算拼图块的新位置（简化版本）
+                    let newX, newY;
+                    
+                    // 获取当前容器的边界
+                    const parent = piece.parentElement;
+                    const parentRect = parent === piecesContainer ? 
+                        piecesContainer.getBoundingClientRect() : 
+                        puzzleBoard.getBoundingClientRect();
+                    
+                    // 统一的坐标计算方式
+                    newX = e.clientX - parentRect.left - offsetX;
+                    newY = e.clientY - parentRect.top - offsetY;
+                    
+                    // 简化的边界限制
+                    const maxX = parent.clientWidth - pieceWidth;
+                    const maxY = parent.clientHeight - pieceHeight;
+                    newX = Math.max(-pieceWidth / 4, Math.min(newX, maxX + pieceWidth / 4));
+                    newY = Math.max(-pieceHeight / 4, Math.min(newY, maxY + pieceHeight / 4));
+                    
+                    // 直接设置位置，不使用过渡
+                    piece.style.left = `${newX}px`;
+                    piece.style.top = `${newY}px`;
+                });
+            });
+            
+            // 鼠标释放事件
+            document.addEventListener('mouseup', function(e) {
+                if (!isDragging || dragTarget !== piece) return;
+                
+                // 取消未执行的动画帧
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                
+                isDragging = false;
+                piece.classList.remove('piece-selected');
+                piece.style.zIndex = startZIndex;
+                
+                // 检查是否应该将拼图块移动到拼图板
+                const boardRect = puzzleBoard.getBoundingClientRect();
+                
+                // 如果鼠标释放位置在拼图板内
+                if (e.clientX >= boardRect.left && e.clientX <= boardRect.right && 
+                    e.clientY >= boardRect.top && e.clientY <= boardRect.bottom) {
+                    
+                    // 计算拼图块在拼图板中的位置
+                    const boardX = e.clientX - boardRect.left - offsetX;
+                    const boardY = e.clientY - boardRect.top - offsetY;
+                    
+                    // 将拼图块移动到拼图板
+                    piece.style.left = `${boardX}px`;
+                    piece.style.top = `${boardY}px`;
+                    
+                    // 优化：检查当前父容器，避免不必要的DOM操作
+                    if (piece.parentElement !== puzzleBoard) {
+                        // 如果拼图块已经在另一个容器中，先移除
+                        if (piece.parentElement) {
+                            piece.parentElement.removeChild(piece);
+                        }
+                        // 添加到拼图板
+                        puzzleBoard.appendChild(piece);
+                    }
+                    
+                    // 检查拼图块是否放置正确
+                    checkPiecePlacement(piece, boardX, boardY);
+                    
+                    // 增加移动次数
+                    movesCount++;
+                    movesCountElement.textContent = movesCount;
+                }
+                
+                // 重置拖拽目标
+                dragTarget = null;
+            });
+            
+            // 鼠标悬停效果
+            piece.addEventListener('mouseenter', function() {
+                if (!isDragging) {
+                    piece.classList.add('puzzle-piece-hover');
+                }
+            });
+            
+            piece.addEventListener('mouseleave', function() {
+                if (!isDragging) {
+                    piece.classList.remove('puzzle-piece-hover');
+                }
+            });
+        }
+        
+        // 检查拼图块是否放置正确 - 优化吸附效果
+        function checkPiecePlacement(piece, x, y) {
+            const correctX = parseFloat(piece.dataset.correctX);
+            const correctY = parseFloat(piece.dataset.correctY);
+            const tolerance = 25; // 略微增大容错距离，使吸附更宽容
+            
+            // 判断是否在正确位置附近
+            if (Math.abs(x - correctX) <= tolerance && Math.abs(y - correctY) <= tolerance) {
+                // 启用过渡效果实现平滑吸附
+                piece.style.transition = 'left 0.15s ease-out, top 0.15s ease-out';
+                
+                // 吸附到正确位置
+                piece.style.left = `${correctX}px`;
+                piece.style.top = `${correctY}px`;
+                
+                // 如果之前没有放置正确，增加完成计数
+                if (piece.dataset.placed === 'false') {
+                    piece.dataset.placed = 'true';
+                    completedPieces++;
+                    completedCountElement.textContent = completedPieces;
+                    
+                    // 添加动画效果
+                    piece.classList.add('scale-105');
+                    setTimeout(() => {
+                        piece.classList.remove('scale-105');
+                        // 完成动画后重置过渡效果
+                        piece.style.transition = 'none';
+                    }, 300);
+                    
+                    // 检查游戏是否完成
+                    checkGameCompletion();
+                } else {
+                    // 放置正确但被移动后放回，也重置过渡效果
+                    setTimeout(() => {
+                        piece.style.transition = 'none';
+                    }, 150);
+                }
+            } else {
+                // 如果之前放置正确，现在移动了，减少完成计数
+                if (piece.dataset.placed === 'true') {
+                    piece.dataset.placed = 'false';
+                    completedPieces--;
+                    completedCountElement.textContent = completedPieces;
+                }
+            }
+        }
+        
+        // 检查游戏是否完成
+        function checkGameCompletion() {
+            if (completedPieces === puzzlePieces.length) {
+                // 游戏完成，停止计时器
+                clearInterval(gameTimer);
+                isGameActive = false;
+                
+                // 显示完成模态框
+                finalTimeElement.textContent = gameTimeElement.textContent;
+                finalMovesElement.textContent = movesCount;
+                finalDifficultyElement.textContent = gameDifficulty;
+                completionModal.classList.remove('hidden');
+                
+                // 添加显示动画
+                setTimeout(() => {
+                    completionModal.style.opacity = '1';
+                    const modalContent = document.getElementById('modal-content');
+                    modalContent.style.transform = 'scale(1)';
+                    modalContent.style.opacity = '1';
+                }, 50);
+            }
+        }
+        
+        // 启动游戏计时器
+        function startGameTimer() {
+            gameStartTime = Date.now();
+            gameTimer = setInterval(updateGameTimer, 1000);
+        }
+        
+        // 更新游戏计时器
+        function updateGameTimer() {
+            const elapsedTime = Math.floor((Date.now() - gameStartTime) / 1000);
+            const minutes = Math.floor(elapsedTime / 60).toString().padStart(2, '0');
+            const seconds = (elapsedTime % 60).toString().padStart(2, '0');
+            gameTimeElement.textContent = `${minutes}:${seconds}`;
+        }
+        
+        // 重置游戏
+        function resetGame() {
+            // 停止计时器
+            clearInterval(gameTimer);
+            
+            // 重置游戏状态
+            isGameActive = false;
+            movesCount = 0;
+            completedPieces = 0;
+            
+            // 更新UI
+            gameTimeElement.textContent = '00:00';
+            movesCountElement.textContent = '0';
+            completedCountElement.textContent = '0';
+            
+            // 清空拼图区域
+            puzzleBoard.innerHTML = '';
+            piecesContainer.innerHTML = '';
+            
+            // 如果有选择的图片，显示初始消息
+            if (puzzleImage) {
+                initialMessage.innerHTML = `
+                    <i class="fa fa-image text-6xl text-gray-600 mb-4"></i>
+                    <p class="text-gray-400">已选择图片，点击开始游戏</p>
+                `;
+                puzzleBoard.appendChild(initialMessage);
+            }
+            
+            // 启用开始按钮
+            startGameBtn.disabled = !puzzleImage;
+            resetGameBtn.disabled = true;
+            hintBtn.disabled = true;
+        }
+        
+        // 显示提示
+        function showHint() {
+            // 找到未放置正确的拼图块
+            const unplacedPieces = puzzlePieces.filter(piece => piece.dataset.placed === 'false');
+            
+            if (unplacedPieces.length > 0) {
+                // 随机选择一个未放置的拼图块
+                const randomPiece = unplacedPieces[Math.floor(Math.random() * unplacedPieces.length)];
+                
+                // 高亮提示该拼图块的正确位置
+                const correctX = parseFloat(randomPiece.dataset.correctX);
+                const correctY = parseFloat(randomPiece.dataset.correctY);
+                
+                // 创建提示标记
+                const hintMarker = document.createElement('div');
+                hintMarker.className = 'absolute rounded-full bg-blue-500/30 animate-pulse';
+                hintMarker.style.width = `${pieceWidth}px`;
+                hintMarker.style.height = `${pieceHeight}px`;
+                hintMarker.style.left = `${correctX}px`;
+                hintMarker.style.top = `${correctY}px`;
+                hintMarker.style.zIndex = 500;
+                
+                // 添加到拼图板
+                puzzleBoard.appendChild(hintMarker);
+                
+                // 3秒后移除提示
+                setTimeout(() => {
+                    if (hintMarker.parentElement) {
+                        hintMarker.parentElement.removeChild(hintMarker);
+                    }
+                }, 3000);
+            }
+        }
+        
+        // 开始游戏
+        function startGame() {
+            if (!puzzleImage) return;
+            
+            // 设置拼图块尺寸
+            calculatePieceDimensions();
+            
+            // 创建拼图块
+            createPuzzlePieces();
+            
+            // 清空初始消息
+            if (initialMessage.parentNode) {
+                initialMessage.parentNode.removeChild(initialMessage);
+            }
+            
+            // 重置游戏状态
+            isGameActive = true;
+            movesCount = 0;
+            completedPieces = 0;
+            
+            // 更新UI
+            movesCountElement.textContent = '0';
+            completedCountElement.textContent = '0';
+            
+            // 启动计时器
+            startGameTimer();
+            
+            // 禁用开始按钮，启用重置和提示按钮
+            startGameBtn.disabled = true;
+            resetGameBtn.disabled = false;
+            hintBtn.disabled = false;
+        }
+        
+        // 初始化事件监听器
+        function initEventListeners() {
+            // 开始游戏按钮
+            startGameBtn.addEventListener('click', startGame);
+            
+            // 重置游戏按钮
+            resetGameBtn.addEventListener('click', resetGame);
+            
+            // 提示按钮
+            hintBtn.addEventListener('click', showHint);
+            
+            // 模态框按钮
+            playAgainBtn.addEventListener('click', function() {
+                const modalContent = document.getElementById('modal-content');
+                modalContent.style.transform = 'scale(0.95)';
+                modalContent.style.opacity = '0';
+                completionModal.style.opacity = '0';
+                
+                setTimeout(() => {
+                    completionModal.classList.add('hidden');
+                    resetGame();
+                    startGame();
+                }, 300);
+            });
+            
+            closeModalBtn.addEventListener('click', function() {
+                const modalContent = document.getElementById('modal-content');
+                modalContent.style.transform = 'scale(0.95)';
+                modalContent.style.opacity = '0';
+                completionModal.style.opacity = '0';
+                
+                setTimeout(() => {
+                    completionModal.classList.add('hidden');
+                }, 300);
+            });
+            
+            // 点击模态框背景关闭
+            completionModal.addEventListener('click', function(e) {
+                if (e.target === completionModal) {
+                    const modalContent = document.getElementById('modal-content');
+                    modalContent.style.transform = 'scale(0.95)';
+                    modalContent.style.opacity = '0';
+                    completionModal.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        completionModal.classList.add('hidden');
+                    }, 300);
+                }
+            });
+        }
+        
+        // 初始化游戏
+        // 创建梦幻粒子背景效果
+        function createParticles() {
+            const container = document.getElementById('particles-container');
+            const particleCount = 20; // 粒子数量
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                // 随机大小
+                const size = Math.random() * 15 + 5;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // 随机动画延迟和持续时间
+                particle.style.animationDelay = `${Math.random() * 5}s`;
+                particle.style.animationDuration = `${Math.random() * 10 + 5}s`;
+                
+                // 随机颜色（紫色和粉色渐变）
+                const hue = Math.random() * 40 + 280; // 紫色到粉色范围
+                const saturation = Math.random() * 30 + 60;
+                particle.style.backgroundColor = `hsl(${hue}, ${saturation}%, 90%)`;
+                
+                // 随机位置
+                particle.style.left = `${Math.random() * 100}vw`;
+                particle.style.top = `${Math.random() * 100}vh`;
+                
+                // 随机透明度
+                particle.style.opacity = (Math.random() * 0.4 + 0.2).toString();
+                
+                container.appendChild(particle);
+            }
+        }
+
+        function initGame() {
+            createParticles();
+            initPresetImages();
+            setupDifficultyButtons();
+            handleFileSelection();
+            initEventListeners();
+            
+            // 初始禁用按钮
+            startGameBtn.disabled = true;
+            resetGameBtn.disabled = true;
+            hintBtn.disabled = true;
+        }
+        
+        // 当页面加载完成后初始化游戏
+        window.addEventListener('load', initGame);
+        
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            // 根据屏幕宽度调整拼图板大小
+            const containerWidth = document.querySelector('main').clientWidth - 30;
+            const maxWidth = window.innerWidth > 768 ? 600 : Math.min(window.innerWidth - 40, 500);
+            const newBoardWidth = Math.min(containerWidth, maxWidth);
+            const aspectRatio = puzzleImage ? puzzleImage.width / puzzleImage.height : 1.5;
+            
+            if (newBoardWidth !== boardWidth && isGameActive) {
+                boardWidth = newBoardWidth;
+                boardHeight = boardWidth / aspectRatio;
+                
+                // 重新计算拼图块尺寸
+                calculatePieceDimensions();
+                
+                // 更新拼图块和拼图板大小
+                puzzleBoard.style.width = `${boardWidth}px`;
+                puzzleBoard.style.height = `${boardHeight}px`;
+                
+                puzzlePieces.forEach(piece => {
+                    // 更新拼图块大小
+                    piece.style.width = `${pieceWidth}px`;
+                    piece.style.height = `${pieceHeight}px`;
+                    piece.style.backgroundSize = `${boardWidth}px ${boardHeight}px`;
+                    
+                    // 如果拼图块已经放置正确，更新其位置
+                    if (piece.dataset.placed === 'true') {
+                        const row = parseInt(piece.dataset.row);
+                        const col = parseInt(piece.dataset.col);
+                        const correctX = col * pieceWidth;
+                        const correctY = row * pieceHeight;
+                        
+                        piece.style.left = `${correctX}px`;
+                        piece.style.top = `${correctY}px`;
+                        piece.dataset.correctX = correctX;
+                        piece.dataset.correctY = correctY;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

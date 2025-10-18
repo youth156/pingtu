@@ -62,6 +62,22 @@ BOOMRVW/
 - Safari
 - Edge
 
+## 在线体验
+
+### 通过GitHub Pages玩游戏
+
+1. 访问 GitHub 仓库：[https://github.com/youth156/pingtu](https://github.com/youth156/pingtu)
+2. 在仓库页面顶部点击 "Settings" 标签
+3. 向下滚动到 "GitHub Pages" 部分
+4. 在 "Source" 下拉菜单中选择 "main" 或 "master" 分支
+5. 点击 "Save" 按钮
+6. 等待几分钟后，GitHub Pages 会部署您的游戏
+7. 访问生成的 GitHub Pages URL (通常是 `https://youth156.github.io/pingtu/`) 即可开始游戏
+
+### 分享给朋友
+
+部署完成后，您可以直接将 GitHub Pages URL 分享给朋友，他们无需下载任何文件，通过浏览器即可立即开始游戏。
+
 ## 注意事项
 
 - 为获得最佳体验，建议使用现代浏览器
